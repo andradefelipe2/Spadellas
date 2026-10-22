@@ -333,13 +333,14 @@ footer{border-top:1px solid var(--line);padding:28px 0;text-align:center;font-si
   const btn = document.getElementById('themeToggle');
   const STORAGE_KEY = 'spa-dellas-theme';
 
-  // Endereço aproximado – Av. Andrômeda, 723 · Alphaville, Barueri-SP
+  // Coordenadas do Spa D.Ellas – Av. Andrômeda, 723 · Alphaville, Barueri-SP
   const COORDS = [-23.4977, -46.8517];
 
+  // Tiles Esri (gratuitos, sem API key, com estilos claro e escuro)
   function tileUrl(theme){
     return theme === 'dark'
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
   }
 
   function applyTheme(theme){
@@ -350,24 +351,17 @@ footer{border-top:1px solid var(--line);padding:28px 0;text-align:center;font-si
     }
   }
 
-  // Tema inicial: preferência salva > sistema > claro
+  // Tema inicial
   let saved = null;
   try { saved = localStorage.getItem(STORAGE_KEY); } catch(e){}
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   applyTheme(saved || (prefersDark ? 'dark' : 'light'));
 
-  // Alternar manualmente
   if (btn){
     btn.addEventListener('click', function(){
       applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
     });
   }
-
-  // Se o usuário não escolheu, acompanha a preferência do sistema
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e){
-    let s; try { s = localStorage.getItem(STORAGE_KEY); } catch(err){}
-    if (!s) applyTheme(e.matches ? 'dark' : 'light');
-  });
 
   // Ano no rodapé
   const y = document.getElementById('ano');
@@ -375,40 +369,38 @@ footer{border-top:1px solid var(--line);padding:28px 0;text-align:center;font-si
 
   // Mapa interativo
   const mapEl = document.getElementById('map');
-  if (mapEl){
-    if (window.L){
-      const map = L.map('map', { scrollWheelZoom: false }).setView(COORDS, 16);
+  if (mapEl && window.L){
+    const map = L.map('map', { scrollWheelZoom: false }).setView(COORDS, 16);
 
-      const tiles = L.tileLayer(tileUrl(root.getAttribute('data-theme')), {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
-      }).addTo(map);
+    // Atribuição obrigatória para os tiles Esri
+    const tiles = L.tileLayer(tileUrl(root.getAttribute('data-theme')), {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; <a href="https://www.esri.com/en-us/arcgis/products/arcgis-online/basemaps" target="_blank" rel="noopener">Esri</a> &mdash; Source: Esri, HERE, Garmin, OpenStreetMap contributors'
+    }).addTo(map);
 
-      window.__spaMap = map;
-      window.__spaTiles = tiles;
+    window.__spaMap = map;
+    window.__spaTiles = tiles;
 
-      // Marcador customizado (pino dourado)
-      const pin = L.divIcon({
-        className: 'spa-marker',
-        html: '<svg width="36" height="44" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">' +
-              '<path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="var(--gold)"/>' +
-              '<circle cx="18" cy="18" r="7" fill="#fff"/>' +
-              '</svg>',
-        iconSize: [36, 44],
-        iconAnchor: [18, 44],
-        popupAnchor: [0, -40]
-      });
+    // Marcador dourado personalizado
+    const pin = L.divIcon({
+      className: 'spa-marker',
+      html: '<svg width="36" height="44" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">' +
+            '<path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="var(--gold)"/>' +
+            '<circle cx="18" cy="18" r="7" fill="#fff"/>' +
+            '</svg>',
+      iconSize: [36, 44],
+      iconAnchor: [18, 44],
+      popupAnchor: [0, -40]
+    });
 
-      L.marker(COORDS, { icon: pin }).addTo(map).bindPopup(
-        '<b>Spa D.Ellas</b><br>Av. Andrômeda, 723 – Sala 615<br>Alphaville, Barueri – SP'
-      );
+    L.marker(COORDS, { icon: pin }).addTo(map).bindPopup(
+      '<b>Spa D.Ellas</b><br>Av. Andrômeda, 723 – Sala 615<br>Alphaville, Barueri – SP'
+    );
 
-      // Recalcula tamanho após fontes/estilos carregarem
-      setTimeout(function(){ map.invalidateSize(); }, 300);
-    } else {
-      // Fallback se o Leaflet não carregar
-      mapEl.innerHTML = '<div class="fallback"><a href="https://www.google.com/maps/search/?api=1&query=Av.+Andr%C3%B4meda+723+Alphaville+Barueri" target="_blank" rel="noopener">Ver localização no Google Maps</a></div>';
-    }
+    setTimeout(function(){ map.invalidateSize(); }, 300);
+  } else if (mapEl) {
+    // Fallback se o Leaflet não carregar
+    mapEl.innerHTML = '<div class="fallback"><a href="https://www.google.com/maps/search/?api=1&query=Av.+Andr%C3%B4meda+723+Alphaville+Barueri" target="_blank" rel="noopener">Ver localização no Google Maps</a></div>';
   }
 })();
 </script>
